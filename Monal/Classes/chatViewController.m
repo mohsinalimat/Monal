@@ -15,9 +15,8 @@
 #import "MonalAppDelegate.h"
 #import "MBProgressHUD.h"
 #import "UIActionSheet+Blocks.h"
-#import <DropBoxSDK/DropBoxSDK.h>
 
-#import "MWPhotoBrowser.h"
+#import "IDMPhotoBrowser.h"
 #import "ContactDetails.h"
 
 @import QuartzCore;
@@ -25,7 +24,7 @@
 
 static const int ddLogLevel = LOG_LEVEL_ERROR;
 
-@interface chatViewController()<DBRestClientDelegate, MWPhotoBrowserDelegate>
+@interface chatViewController() <IDMPhotoBrowserDelegate>
 
 @property (nonatomic, strong)  NSDateFormatter* destinationDateFormat;
 @property (nonatomic, strong)  NSDateFormatter* sourceDateFormat;
@@ -38,7 +37,6 @@ static const int ddLogLevel = LOG_LEVEL_ERROR;
 @property (nonatomic, strong) NSMutableArray* messageList;
 @property (nonatomic, strong) NSMutableArray* photos;
 
-@property (nonatomic, strong) DBRestClient *restClient;
 @property (nonatomic, assign) BOOL encryptChat;
 
 @property (nonatomic, strong) NSDate* lastMamDate;
@@ -126,11 +124,7 @@ static const int ddLogLevel = LOG_LEVEL_ERROR;
 //    self.inputContainerView.layer.borderColor=[UIColor lightGrayColor].CGColor;
 //    self.inputContainerView.layer.borderWidth=0.5f;
     
-    if ([DBSession sharedSession].isLinked) {
-        self.restClient = [[DBRestClient alloc] initWithSession:[DBSession sharedSession]];
-        self.restClient.delegate = self;
-    }
-    
+ 
     self.messageTable.rowHeight = UITableViewAutomaticDimension;
     self.messageTable.estimatedRowHeight= 75.0f;
   
@@ -398,50 +392,6 @@ static const int ddLogLevel = LOG_LEVEL_ERROR;
     }
 }
 
-#pragma mark - Dropbox upload and delegate
-
-- (void) uploadImageToDropBox:(NSData *) imageData {
-
-    NSString *fileName = [NSString stringWithFormat:@"%@.jpg",[NSUUID UUID].UUIDString];
-    NSString *tempDir = NSTemporaryDirectory();
-    NSString *imagePath = [tempDir stringByAppendingPathComponent:fileName];
-    [imageData writeToFile:imagePath atomically:YES];
-    
-    [self.restClient uploadFile:fileName toPath:@"/" withParentRev:nil fromPath:imagePath];
-}
-
-- (void)restClient:(DBRestClient *)client uploadedFile:(NSString *)destPath
-              from:(NSString *)srcPath metadata:(DBMetadata *)metadata {
-    DDLogVerbose(@"File uploaded successfully to dropbox path: %@", metadata.path);
-    [self.restClient loadSharableLinkForFile:metadata.path];
-}
-
-- (void)restClient:(DBRestClient *)client uploadFileFailedWithError:(NSError *)error {
-    DDLogVerbose(@"File upload to dropbox failed with error: %@", error);
-}
-
-- (void)restClient:(DBRestClient*)client uploadProgress:(CGFloat)progress
-           forFile:(NSString*)destPath from:(NSString*)srcPat
-{
-    self.uploadHUD.progress=progress;
-}
-
-- (void)restClient:(DBRestClient*)restClient loadedSharableLink:(NSString*)link
-           forFile:(NSString*)path{
-    NSString *newMessageID =[[NSUUID UUID] UUIDString];
-    [[MLXMPPManager sharedInstance] sendMessage:link toContact:_contactName fromAccount:_accountNo isEncrypted:self.encryptChat isMUC:_isMUC isUpload:YES messageId:newMessageID
-                          withCompletionHandler:nil];
-     [self addMessageto:_contactName withMessage:link andId:newMessageID];
-    
-    self.uploadHUD.hidden=YES;
-    self.uploadHUD=nil;
-}
-
-- (void)restClient:(DBRestClient*)restClient loadSharableLinkFailedWithError:(NSError*)error{
-    self.uploadHUD.hidden=YES;
-    self.uploadHUD=nil;
-    DDLogVerbose(@"Failed to get Dropbox link with error: %@", error);
-}
 
 #pragma mark - image picker
 
@@ -449,7 +399,7 @@ static const int ddLogLevel = LOG_LEVEL_ERROR;
 {
     [self.chatInput resignFirstResponder];
     xmpp* account=[[MLXMPPManager sharedInstance] getConnectedAccountForID:self.accountNo];
-    if(!account.supportsHTTPUpload && !self.restClient)
+    if(!account.supportsHTTPUpload )
     {
         
         UIAlertView *addError = [[UIAlertView alloc]
@@ -501,14 +451,7 @@ static const int ddLogLevel = LOG_LEVEL_ERROR;
         
     }
     
-    //if you have configured it, defer to dropbox
-    if(self.restClient)
-    {
-        self.uploadHUD.mode=MBProgressHUDModeDeterminate;
-        self.uploadHUD.progress=0;
-        [self uploadImageToDropBox:data];
-    }
-    else  {
+   
         [[MLXMPPManager sharedInstance]  httpUploadJpegData:data toContact:self.contactName onAccount:self.accountNo withCompletionHandler:^(NSString *url, NSError *error) {
             dispatch_async(dispatch_get_main_queue(), ^{
                 self.uploadHUD.hidden=YES;
@@ -531,7 +474,7 @@ static const int ddLogLevel = LOG_LEVEL_ERROR;
             });
             
         }];
-    }
+    
 
 }
 
@@ -1234,7 +1177,7 @@ static const int ddLogLevel = LOG_LEVEL_ERROR;
             
             MLChatImageCell *imageCell = (MLChatImageCell *) cell;
             
-            MWPhoto* photo=[MWPhoto photoWithImage:imageCell.thumbnailImage.image];
+            IDMPhoto* photo=[IDMPhoto photoWithImage:imageCell.thumbnailImage.image];
             // photo.caption=[row objectForKey:@"caption"];
             [self.photos addObject:photo];
             
@@ -1242,16 +1185,17 @@ static const int ddLogLevel = LOG_LEVEL_ERROR;
             
             dispatch_async(dispatch_get_main_queue(), ^{
                 
-                MWPhotoBrowser *browser = [[MWPhotoBrowser alloc] initWithDelegate:self];
+                IDMPhotoBrowser *browser = [[IDMPhotoBrowser alloc] init];
+                browser.delegate=self;
                 
                 browser.displayActionButton = YES; // Show action button to allow sharing, copying, etc (defaults to YES)
-                browser.displayNavArrows = NO; // Whether to display left and right nav arrows on toolbar (defaults to NO)
-                browser.displaySelectionButtons = NO; // Whether selection buttons are shown on each image (defaults to NO)
-                browser.zoomPhotosToFill = YES; // Images that almost fill the screen will be initially zoomed to fill (defaults to YES)
-                browser.alwaysShowControls = NO; // Allows to control whether the bars and controls are always visible or whether they fade away to show the photo full (defaults to NO)
-                browser.enableGrid = YES; // Whether to allow the viewing of all the photo thumbnails on a grid (defaults to YES)
-                browser.startOnGrid = NO; // Whether to start on the grid of thumbnails instead of the first photo (defaults to NO)
-              
+//                browser.displayNavArrows = NO; // Whether to display left and right nav arrows on toolbar (defaults to NO)
+//                browser.displaySelectionButtons = NO; // Whether selection buttons are shown on each image (defaults to NO)
+//                browser.zoomPhotosToFill = YES; // Images that almost fill the screen will be initially zoomed to fill (defaults to YES)
+//                browser.alwaysShowControls = NO; // Allows to control whether the bars and controls are always visible or whether they fade away to show the photo full (defaults to NO)
+//                browser.enableGrid = YES; // Whether to allow the viewing of all the photo thumbnails on a grid (defaults to YES)
+//                browser.startOnGrid = NO; // Whether to start on the grid of thumbnails instead of the first photo (defaults to NO)
+//              
                 UINavigationController *nav =[[UINavigationController alloc] initWithRootViewController:browser];
                 
                 
@@ -1374,11 +1318,11 @@ static const int ddLogLevel = LOG_LEVEL_ERROR;
 
 
 #pragma mark - photo browser delegate
-- (NSUInteger)numberOfPhotosInPhotoBrowser:(MWPhotoBrowser *)photoBrowser {
+- (NSUInteger)numberOfPhotosInPhotoBrowser:(IDMPhotoBrowser *)photoBrowser {
     return self.photos.count;
 }
 
-- (id <MWPhoto>)photoBrowser:(MWPhotoBrowser *)photoBrowser photoAtIndex:(NSUInteger)index {
+- (id <IDMPhoto>)photoBrowser:(IDMPhotoBrowser *)photoBrowser photoAtIndex:(NSUInteger)index {
     if (index < self.photos.count) {
         return [self.photos objectAtIndex:index];
     }

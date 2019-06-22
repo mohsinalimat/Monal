@@ -30,7 +30,9 @@
 {
     [super viewWillAppear:animated];
     self.account=[[MLXMPPManager sharedInstance] getConnectedAccountForID:[NSString stringWithFormat:@"%@",[self.contact objectForKey:@"account_id"]]];
+   #ifndef DISABLE_OMEMO
     self.devices= [self.account.monalSignalStore knownDevicesForAddressName:[self.contact objectForKey:@"buddy_name"]];
+    #endif
 }
 
 #pragma mark - Table view data source
@@ -46,10 +48,11 @@
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
     MLKeyCell *cell = (MLKeyCell *) [tableView dequeueReusableCellWithIdentifier:@"key" forIndexPath:indexPath];
-    
+        #ifndef DISABLE_OMEMO
     NSNumber *device =[self.devices objectAtIndex:indexPath.row];
     SignalAddress *address = [[SignalAddress alloc] initWithName:[self.contact objectForKey:@"buddy_name"] deviceId:(int) device.integerValue];
     
+
     NSData *identity=[self.account.monalSignalStore getIdentityForAddress:address];
     
     cell.key.text = [EncodingTools signalHexKeyWithData:identity];
@@ -62,6 +65,7 @@
     } else  {
         cell.deviceid.text = [NSString stringWithFormat:@"%ld", (long)device.integerValue];
     }
+#endif
     return cell;
 }
 
@@ -93,7 +97,7 @@
 {
     UISwitch *button =(UISwitch *)sender;
     NSInteger row = button.tag-100;
-    
+        #ifndef DISABLE_OMEMO
     NSNumber *device =[self.devices objectAtIndex:row];
     SignalAddress *address = [[SignalAddress alloc] initWithName:[self.contact objectForKey:@"buddy_name"] deviceId:(int) device.integerValue];
     
@@ -107,6 +111,7 @@
     }
     
     [self.account.monalSignalStore updateTrust:newTrust forAddress:address];
+#endif
 }
 
 @end

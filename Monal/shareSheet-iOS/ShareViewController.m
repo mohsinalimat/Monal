@@ -8,8 +8,8 @@
 
 #import "ShareViewController.h"
 #import "MLSelectionController.h"
-@import Crashlytics;
-@import Fabric;
+//@import Crashlytics;
+//@import Fabric;
 #import "UIColor+Theme.h"
 
 @interface ShareViewController ()
@@ -32,7 +32,7 @@
 }
 
 - (void)presentationAnimationDidFinish {
-    [Fabric with:@[[Crashlytics class]]];
+   // [Fabric with:@[[Crashlytics class]]];
     NSUserDefaults *groupDefaults= [[NSUserDefaults alloc] initWithSuiteName:@"group.monal"];
     self.accounts= [groupDefaults objectForKey:@"accounts"];
     self.recipients = [groupDefaults objectForKey:@"recipients"];

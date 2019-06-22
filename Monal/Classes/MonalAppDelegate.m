@@ -15,9 +15,9 @@
 #import "DataLayer.h"
 #import "NXOAuth2AccountStore.h"
 
-@import Crashlytics;
-@import Fabric;
-#import <DropboxSDK/DropboxSDK.h>
+//@import Crashlytics;
+//@import Fabric;
+
 
 //xmpp
 #import "MLXMPPManager.h"
@@ -62,8 +62,10 @@ static const int ddLogLevel = LOG_LEVEL_VERBOSE;
     PKPushRegistry * voipRegistry = [[PKPushRegistry alloc] initWithQueue: mainQueue];
     // Set the registry's delegate to self
     voipRegistry.delegate = self;
+#if !TARGET_OS_UIKITFORMAC
     // Set the push type to VoIP
     voipRegistry.desiredPushTypes = [NSSet setWithObject:PKPushTypeVoIP];
+#endif
 }
 
 // Handle updated APNS tokens
@@ -270,7 +272,7 @@ static const int ddLogLevel = LOG_LEVEL_VERBOSE;
     
     BOOL optout = [[NSUserDefaults standardUserDefaults] boolForKey:@"CrashlyticsOptOut"];
     if(!optout) {
-        [Fabric with:@[[Crashlytics class]]];
+     //   [Fabric with:@[[Crashlytics class]]];
     }
     
     //update logs if needed
@@ -278,13 +280,6 @@ static const int ddLogLevel = LOG_LEVEL_VERBOSE;
     {
         [[DataLayer sharedInstance] messageHistoryCleanAll];
     }
-    
-    //Dropbox
-    DBSession *dbSession = [[DBSession alloc]
-                            initWithAppKey:@"a134q2ecj1hqa59"
-                            appSecret:@"vqsf5vt6guedlrs"
-                            root:kDBRootAppFolder];
-    [DBSession setSharedSession:dbSession];
     
     DDLogInfo(@"App started");
     return YES;
@@ -311,13 +306,7 @@ static const int ddLogLevel = LOG_LEVEL_VERBOSE;
     }
     else  {
         
-        if ([[DBSession sharedSession] handleOpenURL:url]) {
-            if ([[DBSession sharedSession] isLinked]) {
-                DDLogVerbose(@"App linked successfully!");
-                // At this point you can start making API calls
-            }
-            return YES;
-        }
+       
     }
     
     return NO;

@@ -9,7 +9,10 @@
 #import "MLNotificationSettingsViewController.h"
 #import "MLSwitchCell.h"
 #import "MLXMPPManager.h"
+#if !TARGET_OS_UIKITFORMAC
 @import UserNotificationsUI;
+#endif
+
 
 NS_ENUM(NSInteger, kNotificationSettingSection)
 {

@@ -257,23 +257,24 @@
             NSString *readPath = [documentsDirectory stringByAppendingPathComponent:@"imagecache"];
             readPath = [readPath stringByAppendingPathComponent:[imagePath objectForKey:@"path"]];
             UIImage *image=[UIImage imageWithContentsOfFile:readPath];
-            MWPhoto* photo=[MWPhoto photoWithImage:image];
+            IDMPhoto* photo=[IDMPhoto photoWithImage:image];
             [self.photos addObject:photo];
         }
     }
     
 dispatch_async(dispatch_get_main_queue(), ^{
     
-    MWPhotoBrowser *browser = [[MWPhotoBrowser alloc] initWithDelegate:self];
+    IDMPhotoBrowser *browser = [[IDMPhotoBrowser alloc] init];
+    browser.delegate=self;
     
-    browser.displayActionButton = YES; // Show action button to allow sharing, copying, etc (defaults to YES)
-    browser.displayNavArrows = NO; // Whether to display left and right nav arrows on toolbar (defaults to NO)
-    browser.displaySelectionButtons = NO; // Whether selection buttons are shown on each image (defaults to NO)
-    browser.zoomPhotosToFill = YES; // Images that almost fill the screen will be initially zoomed to fill (defaults to YES)
-    browser.alwaysShowControls = YES; // Allows to control whether the bars and controls are always visible or whether they fade away to show the photo full (defaults to NO)
-    browser.enableGrid = YES; // Whether to allow the viewing of all the photo thumbnails on a grid (defaults to YES)
-    browser.startOnGrid = YES; // Whether to start on the grid of thumbnails instead of the first photo (defaults to NO)
-    
+//    browser.displayActionButton = YES; // Show action button to allow sharing, copying, etc (defaults to YES)
+//    browser.displayNavArrows = NO; // Whether to display left and right nav arrows on toolbar (defaults to NO)
+//    browser.displaySelectionButtons = NO; // Whether selection buttons are shown on each image (defaults to NO)
+//    browser.zoomPhotosToFill = YES; // Images that almost fill the screen will be initially zoomed to fill (defaults to YES)
+//    browser.alwaysShowControls = YES; // Allows to control whether the bars and controls are always visible or whether they fade away to show the photo full (defaults to NO)
+//    browser.enableGrid = YES; // Whether to allow the viewing of all the photo thumbnails on a grid (defaults to YES)
+//    browser.startOnGrid = YES; // Whether to start on the grid of thumbnails instead of the first photo (defaults to NO)
+//
     UINavigationController *nav =[[UINavigationController alloc] initWithRootViewController:browser];
     
     
@@ -313,6 +314,7 @@ dispatch_async(dispatch_get_main_queue(), ^{
 
 -(IBAction) toggleEncryption:(id)sender
 {
+        #ifndef DISABLE_OMEMO
       NSArray *devices= [self.xmppAccount.monalSignalStore knownDevicesForAddressName:[self.contact objectForKey:@"buddy_name"]];
     if(devices.count>0) {
         if(self.isEncrypted) {
@@ -331,6 +333,7 @@ dispatch_async(dispatch_get_main_queue(), ^{
         [self presentViewController:alert animated:YES completion:nil];
         return;
     }
+#endif
 }
 
 -(void) refreshLock
@@ -374,11 +377,11 @@ dispatch_async(dispatch_get_main_queue(), ^{
 }
 
 #pragma mark - photo browser delegate
-- (NSUInteger)numberOfPhotosInPhotoBrowser:(MWPhotoBrowser *)photoBrowser {
+- (NSUInteger)numberOfPhotosInPhotoBrowser:(IDMPhotoBrowser *)photoBrowser {
     return self.photos.count;
 }
 
-- (id <MWPhoto>)photoBrowser:(MWPhotoBrowser *)photoBrowser photoAtIndex:(NSUInteger)index {
+- (id <IDMPhoto>)photoBrowser:(IDMPhotoBrowser *)photoBrowser photoAtIndex:(NSUInteger)index {
     if (index < self.photos.count) {
         return [self.photos objectAtIndex:index];
     }
